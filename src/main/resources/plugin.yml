@@ -1,0 +1,15 @@
+name: HotbarKits
+version: 1.0.0
+main: com.kodari.hotbarkits.HotbarKitsPlugin
+api-version: '1.21.11'
+description: Save and distribute player hotbar kits.
+commands:
+  kit:
+    description: Save and manage hotbar kits.
+    usage: /kit <save|give|giveall|list|remove>
+    permission: hotbarkits.manage
+    permission-message: '§cYou do not have permission to manage kits.'
+permissions:
+  hotbarkits.manage:
+    description: Allows saving, giving, listing, and removing kits.
+    default: op
