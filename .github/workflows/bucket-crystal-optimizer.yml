@@ -1,0 +1,54 @@
+name: Build BucketCrystalOptimizer
+
+on:
+  push:
+    branches:
+      - bucketcrystaloptimizer-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Fabric 1.21.11 mod
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout build branch
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.2.1'
+
+      - name: Reconstruct source project
+        run: |
+          cat build-payload/part-*.b64 | base64 --decode > /tmp/bucket-crystal-optimizer.zip
+          unzip -q /tmp/bucket-crystal-optimizer.zip
+          test -f BucketCrystalOptimizer/build.gradle
+          test -f BucketCrystalOptimizer/src/main/resources/fabric.mod.json
+
+      - name: Compile and remap Fabric mod
+        run: gradle --no-daemon -p BucketCrystalOptimizer clean build
+
+      - name: Verify remapped JAR
+        run: |
+          test -s BucketCrystalOptimizer/build/libs/bucket-crystal-optimizer-0.1.0.jar
+          jar tf BucketCrystalOptimizer/build/libs/bucket-crystal-optimizer-0.1.0.jar | grep -q 'fabric.mod.json'
+          jar tf BucketCrystalOptimizer/build/libs/bucket-crystal-optimizer-0.1.0.jar | grep -q 'assets/bucketcrystaloptimizer/icon.png'
+
+      - name: Upload compiled JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: BucketCrystalOptimizer-Minecraft-1.21.11
+          path: BucketCrystalOptimizer/build/libs/bucket-crystal-optimizer-0.1.0.jar
+          if-no-files-found: error
+          retention-days: 30
