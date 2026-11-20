@@ -38,7 +38,7 @@ No client mod can guarantee that every server will permit it or that you cannot 
 
 ## Build
 
-With JDK 21 and Gradle 9.7.1 installed:
+With JDK 21 and Gradle 9.9.1 installed:
 
 ```sh
 gradle clean build
