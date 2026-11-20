@@ -29,9 +29,23 @@ jobs:
         with:
           gradle-version: '9.2.1'
 
-      - name: Reconstruct source project
+      - name: Reconstruct and verify source project
         run: |
-          cat build-payload/part-*.b64 | base64 --decode > /tmp/bucket-crystal-optimizer.zip
+          cat build-payload/part-0[1-5].b64 build-payload/verified-tail-*.b64 > /tmp/bucket-crystal-optimizer.b64
+          python - <<'PY'
+          import base64
+          import zipfile
+          from pathlib import Path
+          data = Path('/tmp/bucket-crystal-optimizer.b64').read_bytes()
+          assert len(data) == 33764, f'Unexpected base64 length: {len(data)}'
+          archive = base64.b64decode(data, validate=True)
+          zip_path = Path('/tmp/bucket-crystal-optimizer.zip')
+          zip_path.write_bytes(archive)
+          with zipfile.ZipFile(zip_path) as zf:
+              bad = zf.testzip()
+              assert bad is None, f'Corrupt ZIP member: {bad}'
+          print(f'Validated source ZIP ({len(archive)} bytes)')
+          PY
           unzip -q /tmp/bucket-crystal-optimizer.zip
           test -f BucketCrystalOptimizer/build.gradle
           test -f BucketCrystalOptimizer/src/main/resources/fabric.mod.json
