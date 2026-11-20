@@ -1,9 +1,9 @@
-name: Build BucketCrystalOptimizer
+name: Build BucketCrystalOptimizer (Minimal Fabric)
 
 on:
   push:
     branches:
-      - bucketcrystaloptimizer-build
+      - bucketcrystaloptimizer-minimal
   workflow_dispatch:
 
 permissions:
@@ -11,11 +11,11 @@ permissions:
 
 jobs:
   build:
-    name: Build Fabric 1.21.11 mod
+    name: Compile Fabric 1.21.11 mod
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
-      - name: Checkout build branch
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Java 21
@@ -27,67 +27,28 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: '9.2.1'
+          gradle-version: '9.7.1'
 
-      - name: Reconstruct and recover source project
+      - name: Compile and remap mod
+        run: gradle --no-daemon clean build
+
+      - name: Verify output jar
         run: |
-          cat build-payload/part-0[1-5].b64 build-payload/verified-tail-*.b64 > /tmp/bucket-crystal-optimizer.b64
-          python - <<'PY'
-          import base64
-          import zipfile
-          from pathlib import Path
-          data = Path('/tmp/bucket-crystal-optimizer.b64').read_bytes()
-          assert len(data) == 33764, f'Unexpected base64 length: {len(data)}'
-          archive = base64.b64decode(data, validate=True)
-          zip_path = Path('/tmp/bucket-crystal-optimizer.zip')
-          zip_path.write_bytes(archive)
-          destination = Path('.')
-          extracted = []
-          damaged = []
-          with zipfile.ZipFile(zip_path) as zf:
-              for info in zf.infolist():
-                  try:
-                      content = zf.read(info.filename)
-                  except Exception as exc:
-                      damaged.append((info.filename, str(exc)))
-                      continue
-                  target = destination / info.filename
-                  if info.is_dir():
-                      target.mkdir(parents=True, exist_ok=True)
-                  else:
-                      target.parent.mkdir(parents=True, exist_ok=True)
-                      target.write_bytes(content)
-                      extracted.append(info.filename)
-          print(f'Extracted {len(extracted)} source files')
-          print(f'Skipped damaged optional entries: {damaged}')
-          required = [
-              'BucketCrystalOptimizer/build.gradle',
-              'BucketCrystalOptimizer/src/main/java/dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.java',
-              'BucketCrystalOptimizer/src/main/resources/fabric.mod.json',
-              'BucketCrystalOptimizer/src/main/resources/assets/bucketcrystaloptimizer/icon.png'
-          ]
-          for name in required:
-              assert name in extracted and Path(name).is_file(), f'Missing or damaged required file: {name}'
-          PY
+          test -s build/libs/bucket-crystal-optimizer-1.0.0.jar
+          jar tf build/libs/bucket-crystal-optimizer-1.0.0.jar | grep -qx 'fabric.mod.json'
+          jar tf build/libs/bucket-crystal-optimizer-1.0.0.jar | grep -q 'dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.class'
+          unzip -p build/libs/bucket-crystal-optimizer-1.0.0.jar fabric.mod.json | grep -q '"environment": "client"'
 
-      - name: Fix 1.21.11 Fabric and Mojang mapping names
+      - name: Package source
         run: |
-          sed -i 's/import net.minecraft.client.ParticleStatus;/import net.minecraft.server.level.ParticleStatus;/' BucketCrystalOptimizer/src/main/java/dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.java BucketCrystalOptimizer/src/main/java/dev/bucketcrystaloptimizer/gui/BucketCrystalOptimizerScreen.java
-          sed -i 's/import net.fabricmc.fabric.loader.api.FabricLoader;/import net.fabricmc.loader.api.FabricLoader;/' BucketCrystalOptimizer/src/main/java/dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.java
-          sed -i 's/KeyBindingHelper.registerKeyMapping(/KeyBindingHelper.registerKeyBinding(/g' BucketCrystalOptimizer/src/main/java/dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.java
-      - name: Compile and remap Fabric mod
-        run: gradle --no-daemon -p BucketCrystalOptimizer clean build
+          zip -r BucketCrystalOptimizer-source.zip README.md build.gradle settings.gradle gradle.properties src
 
-      - name: Verify remapped JAR
-        run: |
-          test -s BucketCrystalOptimizer/build/libs/bucket-crystal-optimizer-0.1.0.jar
-          jar tf BucketCrystalOptimizer/build/libs/bucket-crystal-optimizer-0.1.0.jar | grep -q 'fabric.mod.json'
-          jar tf BucketCrystalOptimizer/build/libs/bucket-crystal-optimizer-0.1.0.jar | grep -q 'assets/bucketcrystaloptimizer/icon.png'
-
-      - name: Upload compiled JAR
+      - name: Upload mod jar and source
         uses: actions/upload-artifact@v4
         with:
-          name: BucketCrystalOptimizer-Minecraft-1.21.11
-          path: BucketCrystalOptimizer/build/libs/bucket-crystal-optimizer-0.1.0.jar
+          name: BucketCrystalOptimizer-Minimal-1.21.11
+          path: |
+            build/libs/bucket-crystal-optimizer-1.0.0.jar
+            BucketCrystalOptimizer-source.zip
           if-no-files-found: error
           retention-days: 30
