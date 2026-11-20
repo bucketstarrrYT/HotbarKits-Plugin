@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Compile Fabric 1.21.11 mod
+    name: Compile Fabric 1.21.11 crystal optimizer
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -32,16 +32,20 @@ jobs:
       - name: Compile and remap mod
         run: gradle --no-daemon clean build
 
-      - name: Verify output jar
+      - name: Verify remapped mod
         run: |
-          test -s build/libs/bucket-crystal-optimizer-1.0.0.jar
-          jar tf build/libs/bucket-crystal-optimizer-1.0.0.jar | grep -qx 'fabric.mod.json'
-          jar tf build/libs/bucket-crystal-optimizer-1.0.0.jar | grep -q 'dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.class'
-          unzip -p build/libs/bucket-crystal-optimizer-1.0.0.jar fabric.mod.json | grep -q '"environment": "client"'
+          JAR=build/libs/bucket-crystal-optimizer-1.0.0.jar
+          test -s "$JAR"
+          jar tf "$JAR" | grep -qx 'fabric.mod.json'
+          jar tf "$JAR" | grep -qx 'BucketCrystalOptimizer.mixins.json'
+          jar tf "$JAR" | grep -q 'dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.class'
+          jar tf "$JAR" | grep -q 'dev/bucketcrystaloptimizer/mixin/MultiPlayerGameModeMixin.class'
+          unzip -p "$JAR" fabric.mod.json | grep -q '"environment": "client"'
+          unzip -p "$JAR" fabric.mod.json | grep -q '"minecraft": "~1.21.11"'
 
       - name: Package source
         run: |
-          zip -r BucketCrystalOptimizer-source.zip README.md build.gradle settings.gradle gradle.properties src
+          zip -r BucketCrystalOptimizer-source.zip README.md LICENSE build.gradle settings.gradle gradle.properties src
 
       - name: Upload mod jar and source
         uses: actions/upload-artifact@v4
