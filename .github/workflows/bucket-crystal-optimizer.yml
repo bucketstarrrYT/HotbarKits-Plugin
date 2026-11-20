@@ -70,6 +70,11 @@ jobs:
               assert name in extracted and Path(name).is_file(), f'Missing or damaged required file: {name}'
           PY
 
+      - name: Fix 1.21.11 Fabric and Mojang mapping names
+        run: |
+          sed -i 's/import net.minecraft.client.ParticleStatus;/import net.minecraft.server.level.ParticleStatus;/' BucketCrystalOptimizer/src/main/java/dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.java BucketCrystalOptimizer/src/main/java/dev/bucketcrystaloptimizer/gui/BucketCrystalOptimizerScreen.java
+          sed -i 's/import net.fabricmc.fabric.loader.api.FabricLoader;/import net.fabricmc.loader.api.FabricLoader;/' BucketCrystalOptimizer/src/main/java/dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.java
+          sed -i 's/KeyBindingHelper.registerKeyMapping(/KeyBindingHelper.registerKeyBinding(/g' BucketCrystalOptimizer/src/main/java/dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.java
       - name: Compile and remap Fabric mod
         run: gradle --no-daemon -p BucketCrystalOptimizer clean build
 
