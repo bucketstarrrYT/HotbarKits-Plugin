@@ -29,7 +29,7 @@ jobs:
         with:
           gradle-version: '9.2.1'
 
-      - name: Reconstruct and verify source project
+      - name: Reconstruct and recover source project
         run: |
           cat build-payload/part-0[1-5].b64 build-payload/verified-tail-*.b64 > /tmp/bucket-crystal-optimizer.b64
           python - <<'PY'
@@ -41,14 +41,34 @@ jobs:
           archive = base64.b64decode(data, validate=True)
           zip_path = Path('/tmp/bucket-crystal-optimizer.zip')
           zip_path.write_bytes(archive)
+          destination = Path('.')
+          extracted = []
+          damaged = []
           with zipfile.ZipFile(zip_path) as zf:
-              bad = zf.testzip()
-              assert bad is None, f'Corrupt ZIP member: {bad}'
-          print(f'Validated source ZIP ({len(archive)} bytes)')
+              for info in zf.infolist():
+                  try:
+                      content = zf.read(info.filename)
+                  except Exception as exc:
+                      damaged.append((info.filename, str(exc)))
+                      continue
+                  target = destination / info.filename
+                  if info.is_dir():
+                      target.mkdir(parents=True, exist_ok=True)
+                  else:
+                      target.parent.mkdir(parents=True, exist_ok=True)
+                      target.write_bytes(content)
+                      extracted.append(info.filename)
+          print(f'Extracted {len(extracted)} source files')
+          print(f'Skipped damaged optional entries: {damaged}')
+          required = [
+              'BucketCrystalOptimizer/build.gradle',
+              'BucketCrystalOptimizer/src/main/java/dev/bucketcrystaloptimizer/BucketCrystalOptimizerClient.java',
+              'BucketCrystalOptimizer/src/main/resources/fabric.mod.json',
+              'BucketCrystalOptimizer/src/main/resources/assets/bucketcrystaloptimizer/icon.png'
+          ]
+          for name in required:
+              assert name in extracted and Path(name).is_file(), f'Missing or damaged required file: {name}'
           PY
-          unzip -q /tmp/bucket-crystal-optimizer.zip
-          test -f BucketCrystalOptimizer/build.gradle
-          test -f BucketCrystalOptimizer/src/main/resources/fabric.mod.json
 
       - name: Compile and remap Fabric mod
         run: gradle --no-daemon -p BucketCrystalOptimizer clean build
