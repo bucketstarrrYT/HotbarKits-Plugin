@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.bucketcrystaloptimizer.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ClientLevelMixin",
+    "EndCrystalItemMixin",
+    "EndCrystalMixin",
+    "LevelMixin",
+    "MinecraftMixin",
+    "MultiPlayerGameModeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
