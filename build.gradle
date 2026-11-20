@@ -1,23 +1,39 @@
 plugins {
-    id 'java'
+    id 'net.fabricmc.fabric-loom-remap' version '1.19.4'
 }
 
-group = 'com.kodari'
-version = '1.0.0'
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
 
 repositories {
     mavenCentral()
-    maven {
-        url = 'https://repo.papermc.io/repository/maven-public/'
-    }
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
 }
 
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
 }
